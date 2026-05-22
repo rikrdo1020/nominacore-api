@@ -5,5 +5,6 @@ import { RateRulesController } from './rate-rules.controller';
 @Module({
   controllers: [RateRulesController],
   providers: [RateRulesService],
+  exports: [RateRulesService],
 })
 export class RateRulesModule {}
