@@ -27,13 +27,29 @@ export class PayrollService {
       orderBy: { date: 'desc' },
     });
 
+    // Map deductions by date
+    const deductionsByDate = new Map<string, number>();
+    for (const d of deductions) {
+      deductionsByDate.set(d.date, (deductionsByDate.get(d.date) || 0) + d.amount);
+    }
+
     let totalRegularHours = 0;
     let totalOvertimeHours = 0;
     let totalRegularPay = 0;
     let totalOvertimePay = 0;
+    const dailyBreakdown: {
+      date: string;
+      regular_hours: number;
+      overtime_hours: number;
+      regular_pay: number;
+      overtime_pay: number;
+      daily_total: number;
+      deductions: number;
+    }[] = [];
 
     for (const wr of workRecords) {
-      const d = new Date(wr.date + 'T12:00:00');
+      const dateStr = wr.date;
+      const d = new Date(dateStr + 'T12:00:00');
       const dayOfWeek = d.getDay();
       const dayOfWeekAdjusted = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday=0 ... Sunday=6
       const rule = rateRules.find(r => r.dayOfWeek === dayOfWeekAdjusted);
@@ -50,6 +66,11 @@ export class PayrollService {
         hoursWorked = (exitMin - entryMin) / 60;
       }
 
+      let regHours = 0;
+      let otHours = 0;
+      let regPay = 0;
+      let otPay = 0;
+
       if (rule) {
         const maxReg = rule.maxRegularHours;
         const regRate = rule.regularRate;
@@ -58,15 +79,30 @@ export class PayrollService {
         const netHours = Math.max(0, hoursWorked - lunchDuration);
 
         if (maxReg > 0 && netHours > maxReg) {
-          totalRegularHours += maxReg;
-          totalOvertimeHours += netHours - maxReg;
-          totalRegularPay += maxReg * regRate;
-          totalOvertimePay += (netHours - maxReg) * otRate;
+          regHours = maxReg;
+          otHours = netHours - maxReg;
+          regPay = maxReg * regRate;
+          otPay = (netHours - maxReg) * otRate;
         } else {
-          totalRegularHours += netHours;
-          totalRegularPay += netHours * (maxReg > 0 ? regRate : otRate);
+          regHours = netHours;
+          regPay = netHours * (maxReg > 0 ? regRate : otRate);
         }
       }
+
+      totalRegularHours += regHours;
+      totalOvertimeHours += otHours;
+      totalRegularPay += regPay;
+      totalOvertimePay += otPay;
+
+      dailyBreakdown.push({
+        date: dateStr,
+        regular_hours: Math.round(regHours * 100) / 100,
+        overtime_hours: Math.round(otHours * 100) / 100,
+        regular_pay: Math.round(regPay * 100) / 100,
+        overtime_pay: Math.round(otPay * 100) / 100,
+        daily_total: Math.round((regPay + otPay) * 100) / 100,
+        deductions: Math.round((deductionsByDate.get(dateStr) || 0) * 100) / 100,
+      });
     }
 
     const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
@@ -79,6 +115,7 @@ export class PayrollService {
       period_end: endDate,
       work_records: workRecords,
       deductions: deductions,
+      daily_breakdown: dailyBreakdown,
       total_regular_hours: Math.round(totalRegularHours * 100) / 100,
       total_overtime_hours: Math.round(totalOvertimeHours * 100) / 100,
       regular_pay: Math.round(totalRegularPay * 100) / 100,
