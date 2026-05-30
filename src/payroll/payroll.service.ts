@@ -11,6 +11,10 @@ export class PayrollService {
       orderBy: { dayOfWeek: 'asc' },
     });
 
+    const employeeRates = await this.prisma.employeeRate.findMany({
+      where: { employeeId, isActive: true },
+    });
+
     const workRecords = await this.prisma.workRecord.findMany({
       where: {
         employeeId,
@@ -52,7 +56,8 @@ export class PayrollService {
       const d = new Date(dateStr + 'T12:00:00');
       const dayOfWeek = d.getDay();
       const dayOfWeekAdjusted = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday=0 ... Sunday=6
-      const rule = rateRules.find(r => r.dayOfWeek === dayOfWeekAdjusted);
+      const employeeRate = employeeRates.find(r => r.dayOfWeek === dayOfWeekAdjusted);
+      const rule = employeeRate || rateRules.find(r => r.dayOfWeek === dayOfWeekAdjusted);
 
       let hoursWorked = 0;
       if (wr.isDirectEntry && wr.directHours) {
