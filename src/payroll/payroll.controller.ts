@@ -9,18 +9,33 @@ export class PayrollController {
   @Get('calculate')
   calculate(
     @Query('employee_id') employeeId: string,
-    @Query('start_date') startDate: string,
-    @Query('end_date') endDate: string,
+    @Query('work_start_date') workStartDate: string,
+    @Query('work_end_date') workEndDate: string,
+    @Query('deduction_start_date') deductionStartDate: string,
+    @Query('deduction_end_date') deductionEndDate: string,
   ) {
-    return this.payrollService.calculatePayroll(Number(employeeId), startDate, endDate);
+    return this.payrollService.calculatePayroll(
+      Number(employeeId),
+      workStartDate,
+      workEndDate,
+      deductionStartDate,
+      deductionEndDate,
+    );
   }
 
   @Get('calculate-all')
   calculateAll(
-    @Query('start_date') startDate: string,
-    @Query('end_date') endDate: string,
+    @Query('work_start_date') workStartDate: string,
+    @Query('work_end_date') workEndDate: string,
+    @Query('deduction_start_date') deductionStartDate: string,
+    @Query('deduction_end_date') deductionEndDate: string,
   ) {
-    return this.payrollService.calculatePayrollAll(startDate, endDate);
+    return this.payrollService.calculatePayrollAll(
+      workStartDate,
+      workEndDate,
+      deductionStartDate,
+      deductionEndDate,
+    );
   }
 
   @Post('save')

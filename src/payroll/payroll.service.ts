@@ -6,7 +6,13 @@ import { SavePayrollDto } from './dto/save-payroll.dto';
 export class PayrollService {
   constructor(private prisma: PrismaService) {}
 
-  async calculatePayroll(employeeId: number, startDate: string, endDate: string) {
+  async calculatePayroll(
+    employeeId: number,
+    workStartDate: string,
+    workEndDate: string,
+    deductionStartDate: string,
+    deductionEndDate: string,
+  ) {
     const rateRules = await this.prisma.rateRule.findMany({
       orderBy: { dayOfWeek: 'asc' },
     });
@@ -18,7 +24,7 @@ export class PayrollService {
     const workRecords = await this.prisma.workRecord.findMany({
       where: {
         employeeId,
-        date: { gte: startDate, lte: endDate },
+        date: { gte: workStartDate, lte: workEndDate },
       },
       orderBy: { date: 'desc' },
     });
@@ -26,7 +32,7 @@ export class PayrollService {
     const deductions = await this.prisma.deduction.findMany({
       where: {
         employeeId,
-        date: { gte: startDate, lte: endDate },
+        date: { gte: deductionStartDate, lte: deductionEndDate },
       },
       orderBy: { date: 'desc' },
     });
@@ -114,10 +120,13 @@ export class PayrollService {
     const grossPay = totalRegularPay + totalOvertimePay;
     const netPay = grossPay - totalDeductions;
 
+    const periodStart = workStartDate < deductionStartDate ? workStartDate : deductionStartDate;
+    const periodEnd = workEndDate > deductionEndDate ? workEndDate : deductionEndDate;
+
     return {
       employee_id: employeeId,
-      period_start: startDate,
-      period_end: endDate,
+      period_start: periodStart,
+      period_end: periodEnd,
       work_records: workRecords,
       deductions: deductions,
       daily_breakdown: dailyBreakdown,
@@ -131,7 +140,12 @@ export class PayrollService {
     };
   }
 
-  async calculatePayrollAll(startDate: string, endDate: string) {
+  async calculatePayrollAll(
+    workStartDate: string,
+    workEndDate: string,
+    deductionStartDate: string,
+    deductionEndDate: string,
+  ) {
     const employees = await this.prisma.employee.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
@@ -139,7 +153,13 @@ export class PayrollService {
 
     const results = [];
     for (const emp of employees) {
-      const calc = await this.calculatePayroll(emp.id, startDate, endDate);
+      const calc = await this.calculatePayroll(
+        emp.id,
+        workStartDate,
+        workEndDate,
+        deductionStartDate,
+        deductionEndDate,
+      );
       results.push({
         employee_id: emp.id,
         employee_name: emp.name,
@@ -150,7 +170,7 @@ export class PayrollService {
   }
 
   async savePayroll(dto: SavePayrollDto) {
-    const calc = await this.calculatePayroll(dto.employeeId, dto.periodStart, dto.periodEnd);
+    const calc = await this.calculatePayroll(dto.employeeId, dto.periodStart, dto.periodEnd, dto.periodStart, dto.periodEnd);
     return this.prisma.payroll.create({
       data: {
         employeeId: dto.employeeId,
