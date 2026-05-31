@@ -21,13 +21,20 @@ export class PayrollService {
       where: { employeeId, isActive: true },
     });
 
-    const workRecords = await this.prisma.workRecord.findMany({
+    const workRecordsRaw = await this.prisma.workRecord.findMany({
       where: {
         employeeId,
         date: { gte: workStartDate, lte: workEndDate },
       },
-      orderBy: { date: 'desc' },
+      orderBy: { date: 'asc' },
     });
+
+    // Deduplicate by date — keep last entry per date (most recently inserted wins)
+    const workRecordMap = new Map<string, typeof workRecordsRaw[0]>();
+    for (const wr of workRecordsRaw) {
+      workRecordMap.set(wr.date, wr);
+    }
+    const workRecords = Array.from(workRecordMap.values());
 
     const deductions = await this.prisma.deduction.findMany({
       where: {
