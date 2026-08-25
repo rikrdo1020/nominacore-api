@@ -27,4 +27,9 @@ export class UsersController {
   deactivate(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     return this.usersService.deactivate(id, (req.user as { id: number }).id);
   }
+
+  @Post(':id/reset-password')
+  resetPassword(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.resetPassword(id);
+  }
 }

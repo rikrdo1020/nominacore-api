@@ -2,8 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-
-const BCRYPT_COST = 12;
+import { BCRYPT_COST } from '../common/password.util';
 
 @Injectable()
 export class SeedService implements OnModuleInit {

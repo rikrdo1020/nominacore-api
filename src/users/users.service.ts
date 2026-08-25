@@ -3,8 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
-
-const BCRYPT_COST = 12;
+import { BCRYPT_COST, generateTempPassword } from '../common/password.util';
 
 const PUBLIC_USER_FIELDS = {
   id: true,
@@ -31,16 +30,37 @@ export class UsersService {
       throw new ConflictException('Username is already taken');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_COST);
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, BCRYPT_COST);
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         username: dto.username,
         passwordHash,
         role: dto.role ?? Role.ADMIN,
+        mustChangePassword: true,
       },
       select: PUBLIC_USER_FIELDS,
     });
+
+    return { ...user, tempPassword };
+  }
+
+  async resetPassword(id: number) {
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) {
+      throw new NotFoundException('User not found');
+    }
+
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, BCRYPT_COST);
+
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash, mustChangePassword: true },
+    });
+
+    return { id: target.id, username: target.username, tempPassword };
   }
 
   async deactivate(id: number, requestingUserId: number) {

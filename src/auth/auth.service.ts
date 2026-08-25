@@ -1,9 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
 import type { StringValue } from 'ms';
 import { PrismaService } from '../prisma/prisma.service';
+import { BCRYPT_COST } from '../common/password.util';
+
+const PUBLIC_USER_FIELDS = {
+  id: true,
+  username: true,
+  role: true,
+  mustChangePassword: true,
+} as const;
 
 @Injectable()
 export class AuthService {
@@ -43,7 +51,40 @@ export class AuthService {
         id: user.id,
         username: user.username,
         role: user.role,
+        mustChangePassword: user.mustChangePassword,
       },
     };
+  }
+
+  getMe(userId: number) {
+    return this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: PUBLIC_USER_FIELDS,
+    });
+  }
+
+  async changePassword(userId: number, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Not UnauthorizedException (401): the JWT is valid, only the submitted
+    // current-password value is wrong. A 401 here would trip the renderer's
+    // global "session expired" handler (see preload.ts handleResponse),
+    // force-logging the user out instead of showing an inline form error.
+    const passwordMatches = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!passwordMatches) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: false },
+    });
+
+    return { success: true };
   }
 }
