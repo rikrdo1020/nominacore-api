@@ -1,9 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { json } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Bulk deduction image uploads (base64) exceed Express's 100kb default.
+  app.use(json({ limit: '40mb' }));
 
   app.enableCors({
     origin: '*',
