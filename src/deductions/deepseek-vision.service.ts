@@ -16,15 +16,15 @@ export interface ExtractedDeductionResult {
 
 const VALID_TYPES: DeductionType[] = ['Comida', 'Vales', 'Otro'];
 
-const SYSTEM_PROMPT = `Analiza la imagen de un comprobante de descuento de nómina (recibo, factura, vale) y extrae la información en JSON estricto, sin texto adicional ni markdown. Formato exacto:
+const SYSTEM_PROMPT = `Analiza la imagen de un comprobante de descuento de nómina (recibo, factura, vale) y extrae la información en JSON estricto, sin texto adicional ni markdown. El comprobante PUEDE ESTAR ESCRITO A MANO (manuscrito): interpreta la caligrafía lo mejor posible y baja la confianza cuando dudes. Formato exacto:
 {"date":"YYYY-MM-DD"|null,"type":"Comida"|"Vales"|"Otro","amount":number|null,"description":string|null,"confidence":"high"|"low"}
 
 Reglas:
-- date: fecha del comprobante en formato YYYY-MM-DD. Si no es legible, null.
+- date: fecha del comprobante en formato YYYY-MM-DD. Acepta formatos como "13-ago-26" (13 de agosto de 2026) con meses abreviados en español y año de dos dígitos. Si no es legible, null.
 - type: clasifica en "Comida" (restaurantes, alimentos), "Vales" (vales o cupones), o "Otro" (cualquier otro gasto). Si no está claro, usa "Otro".
 - amount: monto total, solo número, sin símbolos de moneda ni separadores de miles. Si no es legible, null.
 - description: descripción breve (comercio o concepto), máximo 60 caracteres. null si no hay info útil.
-- confidence: "low" si tuviste que adivinar la fecha o el monto, "high" si ambos son claramente legibles.
+- confidence: "low" si tuviste que adivinar la fecha o el monto (frecuente con letra manuscrita), "high" si ambos son claramente legibles.
 
 Responde SOLO el objeto JSON.`;
 
